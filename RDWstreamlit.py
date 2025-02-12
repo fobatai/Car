@@ -4,12 +4,9 @@ import pandas as pd
 import json
 import os
 from typing import Dict, Any
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    import bs4
-    BeautifulSoup = bs4.BeautifulSoup
-    
+from bs4 import BeautifulSoup
+
+
 #########################################
 # Functies voor persistente opslag
 #########################################
