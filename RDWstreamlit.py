@@ -6,7 +6,6 @@ import os
 from typing import Dict, Any
 from bs4 import BeautifulSoup
 
-
 #########################################
 # Functies voor persistente opslag
 #########################################
@@ -213,10 +212,12 @@ if kentekens:
             float(catalogusprijs) if catalogusprijs and catalogusprijs != "Geen data gevonden" else 15000.00
         )
         afschrijving_percentage = st.session_state.overrides.get(f'afschrijving_{kenteken}', 12.0)
-        # Verzekering per maand: standaard 200 €
+        # Verzekering per maand: standaard €200
         verzekering_per_maand = st.session_state.overrides.get(f'verzekering_{kenteken}', 200.0)
-        # Leaseprijs (maandelijks): standaard 0 €
+        # Leaseprijs (maandelijks): standaard €0
         leaseprijs = st.session_state.overrides.get(f'lease_{kenteken}', 0.0)
+        # Nieuw: Onderhoud per maand, standaard €80
+        onderhoud_per_maand = st.session_state.overrides.get(f'onderhoud_{kenteken}', 80.0)
         
         bouwjaar = car_data.get("datum_eerste_toelating")
         gewicht = car_data.get("massa_rijklaar")
@@ -250,12 +251,14 @@ if kentekens:
         rente_per_jaar = aanschafwaarde * (rente / 100)
         rente_per_maand = rente_per_jaar / 12
         
-        # Totale kosten per jaar = afschrijving, brandstof, rente, verzekering (maand * 12) en rijtuigenbelasting (wb_numeric * 12)
-        totale_kosten_per_jaar = (afschrijving_per_maand_calc * 12) + kosten_brandstof_per_jaar + rente_per_jaar + (verzekering_per_maand * 12) + (wb_numeric * 12)
-        totale_kosten_per_maand = totale_kosten_per_jaar / 12
+        # Totale kosten per maand berekend in twee varianten:
+        # Excl. brandstof: afschrijving, rente, verzekering, onderhoud en rijtuigenbelasting
+        kosten_excl_brandstof = afschrijving_per_maand_calc + rente_per_maand + verzekering_per_maand + onderhoud_per_maand + wb_numeric
+        # Incl. brandstof:
+        kosten_incl_brandstof = kosten_excl_brandstof + brandstof_per_maand
         
-        # Bereken het verschil: Leaseprijs minus totale kosten per maand
-        verschil = leaseprijs - totale_kosten_per_maand
+        # Vergelijking lease versus koop (incl. brandstof)
+        verschil = leaseprijs - kosten_incl_brandstof
         
         results.append({
             'Kenteken': kenteken,
@@ -265,17 +268,16 @@ if kentekens:
             'Aanschafwaarde': f"€ {aanschafwaarde:,.2f}",
             'Afschrijvings %': f"{afschrijving_percentage:.2f}%",
             'Rijtuigenbelasting': f"€ {wb_numeric:,.2f}",
+            'Onderhoud (p/m)': f"€ {onderhoud_per_maand:,.2f}",
             'Brandstofverbruik': f"{verbruik:.2f} L/100km" if brandstof and "ELEKTR" not in brandstof.upper() else f"{verbruik:.2f} kWh/100km",
-            'Kosten Brandstof per jaar': f"€ {kosten_brandstof_per_jaar:,.2f}",
-            'Brandstof per maand': f"€ {brandstof_per_maand:.2f}",
-            'Rente per jaar': f"€ {rente_per_jaar:,.2f}",
+            'Brandstof per maand': f"€ {brandstof_per_maand:,.2f}",
             'Rente per maand': f"€ {rente_per_maand:,.2f}",
             'Verzekering (p/m)': f"€ {verzekering_per_maand:,.2f}",
-            'Totale kosten per jaar': f"€ {totale_kosten_per_jaar:,.2f}",
-            'Totale kosten per maand': f"€ {totale_kosten_per_maand:,.2f}",
+            'Totale kosten p/m (excl brandstof)': f"€ {kosten_excl_brandstof:,.2f}",
+            'Totale kosten p/m (incl brandstof)': f"€ {kosten_incl_brandstof:,.2f}",
             'Leaseprijs (p/m)': f"€ {leaseprijs:,.2f}",
             'Verschil (Lease - Koop)': f"€ {verschil:,.2f}",
-            # De kolommen die we later in de expander tonen:
+            # Extra details (expander)
             'Bouwjaar': bouwjaar,
             'Gewicht': f"{gewicht} kg" if gewicht and gewicht != "Geen data gevonden" else "Niet gevonden",
             'Kleur': kleur if kleur else "Onbekend",
@@ -299,7 +301,6 @@ if kentekens:
             merk = res['Merk']
             model = res['Model']
             with st.expander(f"{merk} - {model} - {kenteken}"):
-                # Aanpasbare velden
                 new_aanschaf = st.number_input(
                     "Aanschafwaarde",
                     value=st.session_state.overrides.get(
@@ -331,6 +332,17 @@ if kentekens:
                     key=f"verzekering_{kenteken}_exp"
                 )
                 st.session_state.overrides[f'verzekering_{kenteken}'] = new_verzekering
+                
+                new_onderhoud = st.number_input(
+                    "Onderhoud per maand",
+                    value=st.session_state.overrides.get(
+                        f'onderhoud_{kenteken}', 
+                        80.0
+                    ),
+                    min_value=0.0,
+                    key=f"onderhoud_{kenteken}_exp"
+                )
+                st.session_state.overrides[f'onderhoud_{kenteken}'] = new_onderhoud
 
                 new_leaseprijs = st.number_input(
                     "Leaseprijs (p/m)",
