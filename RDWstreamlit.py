@@ -172,8 +172,16 @@ def get_overijssel_price(kenteken: str) -> str:
 
 st.set_page_config(layout="wide")
 st.title("🚗 Autokosten Calculator")
+
+# Beschrijving bovenaan
+st.markdown("""
+**Dit is de autokosten calculator van Pontifexx.**  
+Wij berekenen hier de autokosten voor auto’s die we aanschaffen zodat het past in onze autoregeling.  
+De budgetruimte per rol is in de onderstaande tabel weergegeven, aanschaf van een auto gaat altijd in overleg met Johan.
+""")
+st.image("tabel.jpg")
+
 st.write("""
-Deze applicatie berekent de kosten van auto's.
 Voer hieronder één of meerdere kentekens in (één per regel).
 """)
 
@@ -207,16 +215,17 @@ if kentekens:
         model = car_data.get("handelsbenaming", "Onbekend")
         
         # Overrides en standaardwaarden
+        # Let op: de variabele blijft 'aanschafwaarde', maar we labelen hem als 'Aanschafprijs excl btw'
         aanschafwaarde = st.session_state.overrides.get(
             f'aanschaf_{kenteken}', 
             float(catalogusprijs) if catalogusprijs and catalogusprijs != "Geen data gevonden" else 15000.00
         )
         afschrijving_percentage = st.session_state.overrides.get(f'afschrijving_{kenteken}', 12.0)
-        # Verzekering per maand: standaard €200
+        # Verzekering p/m: standaard €200
         verzekering_per_maand = st.session_state.overrides.get(f'verzekering_{kenteken}', 200.0)
-        # Leaseprijs (maandelijks): standaard €0
+        # Leaseprijs p/m: standaard €0
         leaseprijs = st.session_state.overrides.get(f'lease_{kenteken}', 0.0)
-        # Nieuw: Onderhoud per maand, standaard €80
+        # Nieuw: Onderhoud p/m, standaard €80
         onderhoud_per_maand = st.session_state.overrides.get(f'onderhoud_{kenteken}', 80.0)
         
         bouwjaar = car_data.get("datum_eerste_toelating")
@@ -257,26 +266,30 @@ if kentekens:
         # Incl. brandstof:
         kosten_incl_brandstof = kosten_excl_brandstof + brandstof_per_maand
         
+        # Bereken Leaseprijs incl brandstof = leaseprijs + brandstof_per_maand
+        leaseprijs_incl = leaseprijs + brandstof_per_maand
+        
         # Vergelijking lease versus koop (incl. brandstof)
-        verschil = leaseprijs - kosten_incl_brandstof
+        verschil = leaseprijs_incl - kosten_incl_brandstof
         
         results.append({
             'Kenteken': kenteken,
             'Merk': merk,
             'Model': model,
             'Catalogusprijs': f"€ {float(catalogusprijs):,.2f}" if catalogusprijs and catalogusprijs != "Geen data gevonden" else "Niet gevonden",
-            'Aanschafwaarde': f"€ {aanschafwaarde:,.2f}",
-            'Afschrijvings %': f"{afschrijving_percentage:.2f}%",
+            'Aanschafprijs excl btw': f"€ {aanschafwaarde:,.2f}",
+            'Afschrijvings%': f"{afschrijving_percentage:.2f}%",
             'Rijtuigenbelasting': f"€ {wb_numeric:,.2f}",
-            'Onderhoud (p/m)': f"€ {onderhoud_per_maand:,.2f}",
+            'Onderhoud p/m': f"€ {onderhoud_per_maand:,.2f}",
             'Brandstofverbruik': f"{verbruik:.2f} L/100km" if brandstof and "ELEKTR" not in brandstof.upper() else f"{verbruik:.2f} kWh/100km",
-            'Brandstof per maand': f"€ {brandstof_per_maand:,.2f}",
-            'Rente per maand': f"€ {rente_per_maand:,.2f}",
-            'Verzekering (p/m)': f"€ {verzekering_per_maand:,.2f}",
-            'Totale kosten p/m (excl brandstof)': f"€ {kosten_excl_brandstof:,.2f}",
-            'Totale kosten p/m (incl brandstof)': f"€ {kosten_incl_brandstof:,.2f}",
-            'Leaseprijs (p/m)': f"€ {leaseprijs:,.2f}",
-            'Verschil (Lease - Koop)': f"€ {verschil:,.2f}",
+            'Brandstof p/m': f"€ {brandstof_per_maand:,.2f}",
+            'Rente p/m': f"€ {rente_per_maand:,.2f}",
+            'Verzekering p/m': f"€ {verzekering_per_maand:,.2f}",
+            'Totale kosten p/m excl brandstof': f"€ {kosten_excl_brandstof:,.2f}",
+            'Totale kosten p/m incl brandstof': f"€ {kosten_incl_brandstof:,.2f}",
+            'Leaseprijs p/m': f"€ {leaseprijs:,.2f}",
+            'Leaseprijs incl brandstof': f"€ {leaseprijs_incl:,.2f}",
+            'Verschil lease-koop': f"€ {verschil:,.2f}",
             # Extra details (expander)
             'Bouwjaar': bouwjaar,
             'Gewicht': f"{gewicht} kg" if gewicht and gewicht != "Geen data gevonden" else "Niet gevonden",
@@ -291,7 +304,26 @@ if kentekens:
         # Maak eerst de hoofd-tabel zonder de verborgen kolommen
         df = pd.DataFrame(results)
         hidden_cols = ['Bouwjaar', 'Gewicht', 'Kleur', 'APK', 'CO2', 'Fijnstof', 'Toelating']
-        df_main = df.drop(columns=hidden_cols)
+        main_columns = [
+            "Kenteken",
+            "Merk",
+            "Model",
+            "Catalogusprijs",
+            "Aanschafprijs excl btw",
+            "Afschrijvings%",
+            "Rijtuigenbelasting",
+            "Onderhoud p/m",
+            "Brandstofverbruik",
+            "Brandstof p/m",
+            "Rente p/m",
+            "Verzekering p/m",
+            "Totale kosten p/m excl brandstof",
+            "Totale kosten p/m incl brandstof",
+            "Leaseprijs p/m",
+            "Leaseprijs incl brandstof",
+            "Verschil lease-koop"
+        ]
+        df_main = df[main_columns]
         st.dataframe(df_main, use_container_width=True, hide_index=True)
         
         st.markdown("### Pas per auto de instellingen aan en bekijk extra details")
@@ -302,10 +334,10 @@ if kentekens:
             model = res['Model']
             with st.expander(f"{merk} - {model} - {kenteken}"):
                 new_aanschaf = st.number_input(
-                    "Aanschafwaarde",
+                    "Aanschafprijs excl btw",
                     value=st.session_state.overrides.get(
                         f'aanschaf_{kenteken}', 
-                        float(res['Aanschafwaarde'].replace("€", "").replace(",", "")) if res['Aanschafwaarde'] != "Niet gevonden" else 15000.00
+                        float(res['Aanschafprijs excl btw'].replace("€", "").replace(",", "")) if res['Aanschafprijs excl btw'] != "Niet gevonden" else 15000.00
                     ),
                     key=f"aanschaf_{kenteken}_exp"
                 )
@@ -315,7 +347,7 @@ if kentekens:
                     "Afschrijvingspercentage per jaar",
                     value=st.session_state.overrides.get(
                         f'afschrijving_{kenteken}', 
-                        float(res['Afschrijvings %'].replace("%", "")) if res['Afschrijvings %'] != "Onbekend" else 12.0
+                        float(res['Afschrijvings%'].replace("%", "")) if res['Afschrijvings%'] != "Onbekend" else 12.0
                     ),
                     min_value=0.0, max_value=100.0,
                     key=f"afschrijving_{kenteken}_exp"
@@ -323,10 +355,10 @@ if kentekens:
                 st.session_state.overrides[f'afschrijving_{kenteken}'] = new_afschrijving
 
                 new_verzekering = st.number_input(
-                    "Verzekering per maand",
+                    "Verzekering p/m",
                     value=st.session_state.overrides.get(
                         f'verzekering_{kenteken}', 
-                        float(res['Verzekering (p/m)'].replace("€", "").replace(",", "")) if res['Verzekering (p/m)'] != "Niet gevonden" else 200.0
+                        float(res['Verzekering p/m'].replace("€", "").replace(",", "")) if res['Verzekering p/m'] != "Niet gevonden" else 200.0
                     ),
                     min_value=0.0,
                     key=f"verzekering_{kenteken}_exp"
@@ -334,7 +366,7 @@ if kentekens:
                 st.session_state.overrides[f'verzekering_{kenteken}'] = new_verzekering
                 
                 new_onderhoud = st.number_input(
-                    "Onderhoud per maand",
+                    "Onderhoud p/m",
                     value=st.session_state.overrides.get(
                         f'onderhoud_{kenteken}', 
                         80.0
@@ -345,10 +377,10 @@ if kentekens:
                 st.session_state.overrides[f'onderhoud_{kenteken}'] = new_onderhoud
 
                 new_leaseprijs = st.number_input(
-                    "Leaseprijs (p/m)",
+                    "Leaseprijs p/m",
                     value=st.session_state.overrides.get(
                         f'lease_{kenteken}', 
-                        float(res['Leaseprijs (p/m)'].replace("€", "").replace(",", "")) if res['Leaseprijs (p/m)'] != "Niet gevonden" else 0.0
+                        float(res['Leaseprijs p/m'].replace("€", "").replace(",", "")) if res['Leaseprijs p/m'] != "Niet gevonden" else 0.0
                     ),
                     min_value=0.0,
                     key=f"lease_{kenteken}_exp"
