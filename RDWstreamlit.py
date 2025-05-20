@@ -220,7 +220,7 @@ if kentekens:
             f'aanschaf_{kenteken}', 
             float(catalogusprijs) if catalogusprijs and catalogusprijs != "Geen data gevonden" else 15000.00
         )
-        afschrijving_percentage = st.session_state.overrides.get(f'afschrijving_{kenteken}', 12.0)
+        afschrijving_percentage = st.session_state.overrides.get(f'afschrijving_{kenteken}', 15.0)
         # Verzekering p/m: standaard €200
         verzekering_per_maand = st.session_state.overrides.get(f'verzekering_{kenteken}', 200.0)
         # Leaseprijs p/m: standaard €0
@@ -347,7 +347,7 @@ if kentekens:
                     "Afschrijvingspercentage per jaar",
                     value=st.session_state.overrides.get(
                         f'afschrijving_{kenteken}', 
-                        float(res['Afschrijvings%'].replace("%", "")) if res['Afschrijvings%'] != "Onbekend" else 12.0
+                        float(res['Afschrijvings%'].replace("%", "")) if res['Afschrijvings%'] != "Onbekend" else 15.0
                     ),
                     min_value=0.0, max_value=100.0,
                     key=f"afschrijving_{kenteken}_exp"
